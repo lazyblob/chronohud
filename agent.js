@@ -406,6 +406,32 @@ function fmt(sec) {
   return m > 0 ? `${m}:${s}` : `${s}s`;
 }
 
+/* Windows: find a stale iRaceHUD process (node/electron only — never anything
+   else) still listening on the port, and kill it so the newest launcher wins.
+   Returns true if a stale instance was terminated. */
+function killStaleAgentOnPort(port) {
+  if (process.platform !== 'win32') return false;
+  const { execSync } = require('child_process');
+  const run = (cmd) => {
+    try { return execSync(cmd, { stdio: ['ignore', 'pipe', 'ignore'] }).toString(); }
+    catch { return ''; }
+  };
+  let killed = false;
+  for (const line of run('netstat -ano').split('\n')) {
+    const cols = line.trim().split(/\s+/);
+    if (cols[0] !== 'TCP' || cols[3] !== 'LISTENING') continue;
+    if (!cols[1].endsWith(':' + port)) continue;
+    const pid = cols[4];
+    if (!pid || pid === String(process.pid)) continue;
+    const image = run(`tasklist /FI "PID eq ${pid}" /FO CSV /NH`).toLowerCase();
+    if (image.includes('node.exe') || image.includes('electron.exe')) {
+      run(`taskkill /PID ${pid} /F`);
+      killed = true;
+    }
+  }
+  return killed;
+}
+
 /* ─────────────────────────────── BOOTSTRAP ──────────────────────────────── */
 
 async function main() {
@@ -432,27 +458,48 @@ async function main() {
     }
   }
 
-  // ── WebSocket server
-  const wss = new WebSocketServer({ port: CONFIG.wsPort });
+  // ── WebSocket server — newest agent wins: if a stale iRaceHUD instance is
+  //    still holding the port (e.g. yesterday's demo window), evict it.
+  let wss;
   const broadcast = (obj) => {
     const json = JSON.stringify(obj);
     for (const client of wss.clients) if (client.readyState === 1) client.send(json);
   };
 
-  wss.on('connection', (ws) => {
-    console.log(`● Overlay connected (${wss.clients.size} client${wss.clients.size === 1 ? '' : 's'})`);
-    ws.send(JSON.stringify({
-      type: 'config',
-      source: mode,
-      hz: CONFIG.tickHz,
-      targetLapTime: WORLD_RECORD_LAP,
-      profile: WORLD_RECORD_PROFILE,
-    }));
-    ws.on('close', () => console.log('○ Overlay disconnected'));
-  });
-  wss.on('listening', () =>
-    console.log(`▶ WebSocket live on ws://localhost:${CONFIG.wsPort} — open overlay.html`)
-  );
+  let tookOver = false;
+  const bind = () => {
+    wss = new WebSocketServer({ port: CONFIG.wsPort });
+
+    wss.on('connection', (ws) => {
+      console.log(`● Overlay connected (${wss.clients.size} client${wss.clients.size === 1 ? '' : 's'})`);
+      ws.send(JSON.stringify({
+        type: 'config',
+        source: mode,
+        hz: CONFIG.tickHz,
+        targetLapTime: WORLD_RECORD_LAP,
+        profile: WORLD_RECORD_PROFILE,
+      }));
+      ws.on('close', () => console.log('○ Overlay disconnected'));
+    });
+    wss.on('listening', () =>
+      console.log(`▶ WebSocket live on ws://localhost:${CONFIG.wsPort} — open overlay.html`)
+    );
+    wss.on('error', (err) => {
+      if (err.code === 'EADDRINUSE' && !tookOver && killStaleAgentOnPort(CONFIG.wsPort)) {
+        tookOver = true;
+        console.log(`▶ Port ${CONFIG.wsPort} was held by a stale iRaceHUD agent — taking over…`);
+        setTimeout(bind, 700);
+        return;
+      }
+      if (err.code === 'EADDRINUSE') {
+        console.error(`✖ Port ${CONFIG.wsPort} is already in use and could not be freed.`);
+        console.error('  Close any other iRaceHUD windows and try again.');
+        process.exit(1);
+      }
+      throw err;
+    });
+  };
+  bind();
 
   // ── Engine wiring: frames in → payload out at 60 Hz
   const engine = new TelemetryEngine({

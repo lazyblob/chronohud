@@ -24,6 +24,10 @@ const path = require('path');
 
 const demoMode = process.argv.includes('--demo');
 
+// Dedicated profile dir — the default (%AppData%\Electron) is shared by every
+// unpackaged Electron app and triggers "Unable to move the cache" noise.
+app.setPath('userData', path.join(app.getPath('appData'), 'iRaceHUD'));
+
 let win = null;
 let agentProc = null;
 let clickThrough = true;

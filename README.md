@@ -93,7 +93,8 @@ Delta convention: `liveDelta = yourElapsed − recordProfileTime` → **negative
 
 - `irsdk-node`'s API surface has shifted between majors, so telemetry is read through a defensive `readVar()` that tolerates both `{value:[x]}` wrappers and raw numbers.
 - Driver strings fall back gracefully from `ClubName`/`CountryCode` to the newer `FlairName`/`FlairShortName` session fields.
-- Port 8080 taken? Change `wsPort` in `agent.js` and `WS_URL` in `overlay.html`.
+- The newest launcher wins: a stale iRaceHUD agent still holding port 8080 (yesterday's forgotten demo window) is evicted automatically on startup. Only node/electron processes are ever touched.
+- Port 8080 taken by something else? Change `wsPort` in `agent.js` and `WS_URL` in `overlay.html`.
 
 ## License
 
