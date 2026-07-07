@@ -1,5 +1,6 @@
 node_modules/
 npm-debug.log*
+.claude/settings.local.json
 package-lock.json.bak
 .DS_Store
 Thumbs.db

@@ -1,0 +1,17 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "demo-agent",
+      "runtimeExecutable": "node",
+      "runtimeArgs": ["agent.js", "--demo"],
+      "port": 8080
+    },
+    {
+      "name": "overlay",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": ["--yes", "http-server", "-p", "5173", "-c-1", "."],
+      "port": 5173
+    }
+  ]
+}

@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * ═══════════════════════════════════════════════════════════════════════════
- *  ChronoHUD — Local Telemetry Agent (agent.js)
+ *  iRaceHUD — Local Telemetry Agent (agent.js)
  * ───────────────────────────────────────────────────────────────────────────
  *  Hooks into the iRacing shared-memory telemetry stream via `irsdk-node`,
  *  runs the delta / consistency engine at 60 Hz, and pipes a compact JSON
@@ -388,10 +388,10 @@ class SimulatedSource {
 
 /* ─────────────────────────── CLOUD HOOK (FUTURE) ─────────────────────────
  * Extension point for the scouting pipeline: POST every completed lap
- * (time, σ, delta trace) to the central ChronoHUD API for global/regional/
+ * (time, σ, delta trace) to the central iRaceHUD API for global/regional/
  * club leaderboard ingestion. Intentionally a no-op in the local build.    */
 async function uploadLapToCloud(lapRecord) {
-  // TODO: await fetch('https://api.chronohud.example/v1/laps', {method:'POST', body: JSON.stringify(lapRecord)})
+  // TODO: await fetch('https://api.iracehud.example/v1/laps', {method:'POST', body: JSON.stringify(lapRecord)})
   void lapRecord;
 }
 
@@ -412,7 +412,7 @@ async function main() {
   const forceDemo = process.argv.includes('--demo');
 
   console.log('┌──────────────────────────────────────────────┐');
-  console.log('│  ChronoHUD Agent · WR target ' + fmt(WORLD_RECORD_LAP).padEnd(15) + ' │');
+  console.log('│  iRaceHUD Agent · WR target ' + fmt(WORLD_RECORD_LAP).padEnd(15) + ' │');
   console.log('└──────────────────────────────────────────────┘');
 
   // ── Pick a telemetry source
@@ -469,7 +469,7 @@ async function main() {
 
   // ── Graceful shutdown
   process.on('SIGINT', () => {
-    console.log('\n▼ Shutting down ChronoHUD agent…');
+    console.log('\n▼ Shutting down iRaceHUD agent…');
     source.stop?.();
     wss.close(() => process.exit(0));
     setTimeout(() => process.exit(0), 500);

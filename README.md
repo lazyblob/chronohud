@@ -1,4 +1,4 @@
-# ChronoHUD 🏁
+# iRaceHUD 🏁
 
 Trackmania-inspired telemetry HUD overlay for **iRacing** — a live world-record delta bar, pro-scouting consistency grades, and an input-painted track map, streamed from the sim's shared memory to a transparent browser overlay at 60 Hz.
 
@@ -31,6 +31,15 @@ node agent.js        # auto-detects a running iRacing instance
 ```
 
 Requires Windows with iRacing open. The pill flips to **LIVE**; everything else is identical.
+
+### In-game overlay (floats over the sim)
+
+```bash
+npm run game         # LIVE — transparent, always-on-top, click-through window + agent
+npm run game:demo    # same window, synthetic car
+```
+
+One command boots the whole stack: an Electron window floats the HUD over iRacing while clicks pass straight through to the sim. Run iRacing in **borderless windowed** mode (exclusive fullscreen paints over every OS window). Hotkeys: **Ctrl+Shift+Q** quits, **Ctrl+Shift+M** toggles mouse click-through. On Windows, the `Start iRaceHUD - *.bat` launchers wrap these commands for double-click startup.
 
 ### OBS / streaming
 

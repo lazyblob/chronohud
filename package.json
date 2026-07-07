@@ -1,20 +1,35 @@
 {
-  "name": "chronohud",
+  "name": "iracehud",
   "version": "0.1.0",
   "private": true,
   "description": "Trackmania-inspired iRacing telemetry HUD — local agent + transparent overlay",
   "license": "MIT",
-  "keywords": ["iracing", "telemetry", "overlay", "hud", "sim-racing", "websocket", "irsdk"],
-  "engines": { "node": ">=18" },
+  "keywords": [
+    "iracing",
+    "telemetry",
+    "overlay",
+    "hud",
+    "sim-racing",
+    "websocket",
+    "irsdk"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
   "main": "agent.js",
   "scripts": {
     "start": "node agent.js",
-    "demo": "node agent.js --demo"
+    "demo": "node agent.js --demo",
+    "game": "electron overlay-window.js",
+    "game:demo": "electron overlay-window.js --demo"
   },
   "dependencies": {
     "ws": "^8.18.0"
   },
   "optionalDependencies": {
     "irsdk-node": "*"
+  },
+  "devDependencies": {
+    "electron": "^43.0.0"
   }
 }

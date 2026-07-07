@@ -3,24 +3,27 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>ChronoHUD Overlay</title>
+<title>iRaceHUD Overlay</title>
 <style>
-  /* ═══════════════════ ChronoHUD · overlay.html ═══════════════════
+  /* ═══════════════════ iRaceHUD · overlay.html ═══════════════════
      Fully transparent viewport for OBS / overlay hosts. Open in a
      normal browser and press [B] to toggle a test backdrop.        */
 
   @import url('https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&family=Rajdhani:wght@500;600;700&display=swap');
 
   :root {
-    --panel:      rgba(12, 17, 27, 0.87);
-    --panel-deep: rgba(8, 11, 19, 0.92);
-    --edge:       rgba(148, 163, 184, 0.16);
-    --ink:        #e9f0fa;
-    --muted:      #8ca1bc;
-    --green:      #00ff9d;
-    --red:        #ff2953;
-    --cyan:       #38e1ff;
-    --amber:      #ffb454;
+    /* Verstappen.com Racing palette: Red Bull red → deep navy → royal blue,
+       RB yellow for highlights. Green stays reserved for "gaining" — racing
+       timing convention. */
+    --panel:      rgba(10, 13, 34, 0.88);
+    --panel-deep: rgba(6, 8, 24, 0.94);
+    --edge:       rgba(110, 130, 190, 0.22);
+    --ink:        #f2f5ff;
+    --muted:      #96a2c8;
+    --green:      #00e07c;
+    --red:        #e8112d;
+    --blue:       #4d64ff;
+    --yellow:     #ffc906;
     --font-display: 'Chakra Petch', 'Segoe UI', system-ui, sans-serif;
     --font-label:   'Rajdhani', 'Segoe UI', system-ui, sans-serif;
   }
@@ -35,9 +38,9 @@
     overflow: hidden;
   }
   body.debug-bg {
+    /* test backdrop mimics verstappen.com's red → navy → blue sweep */
     background:
-      radial-gradient(1200px 600px at 70% 20%, #16233b 0%, transparent 60%),
-      #0a0f18;
+      linear-gradient(112deg, #b30020 0%, #4d0f2e 30%, #0d1130 55%, #101a5e 78%, #1626a8 100%);
   }
 
   /* ── HUD column ─────────────────────────────────────────────── */
@@ -53,22 +56,49 @@
   .card {
     background: var(--panel);
     border: 1px solid var(--edge);
-    border-radius: 14px;
+    border-radius: 10px;
+    /* angular top-right cut, echoing verstappen.com's diagonal edges */
+    clip-path: polygon(0 0, calc(100% - 16px) 0, 100% 16px, 100% 100%, 0 100%);
     padding: 12px 14px;
     position: relative;
     overflow: hidden;
     transition: box-shadow 0.4s ease;
   }
-  .card::before { /* neon trim */
+  .card::before { /* red → blue livery trim */
     content: '';
     position: absolute;
-    top: 0; left: 10%; right: 10%;
-    height: 1px;
-    background: linear-gradient(90deg, transparent, var(--cyan), transparent);
-    opacity: 0.7;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, var(--red) 0%, #7d1030 32%, #1b2670 66%, #2e46e8 100%);
+    opacity: 0.9;
+  }
+
+  /* ── Brand bar ──────────────────────────────────────────────── */
+  .brand-bar {
+    padding: 8px 14px 7px;
+    background: linear-gradient(105deg, rgba(176, 0, 32, 0.92) 0%, rgba(58, 12, 48, 0.90) 38%, rgba(12, 16, 52, 0.90) 62%, rgba(22, 38, 168, 0.92) 100%);
+    text-align: center;
+  }
+  .brand-bar::before { display: none; }
+  .brand-name {
+    font-family: var(--font-display);
+    font-style: italic;
+    font-weight: 700;
+    font-size: 16px;
+    letter-spacing: 0.30em;
+    color: #ffffff;
+    text-shadow: 0 1px 8px rgba(0, 0, 0, 0.45);
+  }
+  .brand-sub {
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.44em;
+    text-transform: uppercase;
+    color: rgba(255, 255, 255, 0.72);
+    margin-top: 1px;
   }
   .hud.best-glow .card {
-    box-shadow: 0 0 22px rgba(0, 255, 157, 0.45), inset 0 0 18px rgba(0, 255, 157, 0.08);
+    box-shadow: 0 0 22px rgba(0, 224, 124, 0.45), inset 0 0 18px rgba(0, 224, 124, 0.08);
   }
 
   .eyebrow {
@@ -85,12 +115,13 @@
   /* ── Widget 1 · Rotational rank tower ───────────────────────── */
   .rank-title {
     font-family: var(--font-display);
+    font-style: italic;
     font-size: 17px;
     font-weight: 700;
     letter-spacing: 0.03em;
     margin-top: 6px;
-    color: var(--cyan);
-    text-shadow: 0 0 14px rgba(56, 225, 255, 0.35);
+    color: var(--ink);
+    text-shadow: 0 0 14px rgba(232, 17, 45, 0.55);
     min-height: 22px;
   }
   .rank-sub { font-size: 12px; color: var(--muted); font-weight: 600; margin-top: 1px; }
@@ -118,11 +149,11 @@
   .board .gap { font-family: var(--font-display); font-size: 12px; }
   .board li.me {
     color: var(--ink);
-    background: rgba(56, 225, 255, 0.09);
-    border: 1px solid rgba(56, 225, 255, 0.35);
-    box-shadow: 0 0 12px rgba(56, 225, 255, 0.12);
+    background: rgba(232, 17, 45, 0.13);
+    border: 1px solid rgba(232, 17, 45, 0.55);
+    box-shadow: 0 0 12px rgba(232, 17, 45, 0.20);
   }
-  .board li.me .gap { color: var(--cyan); }
+  .board li.me .gap { color: var(--yellow); }
   .board.roll li { animation: row-in 0.4s ease both; }
   .board.roll li:nth-child(1) { animation-delay: 0.02s; }
   .board.roll li:nth-child(2) { animation-delay: 0.06s; }
@@ -143,10 +174,10 @@
   }
   .status-pill .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--muted); }
   .status-pill.live .dot   { background: var(--green); box-shadow: 0 0 8px var(--green); }
-  .status-pill.demo .dot   { background: var(--amber); box-shadow: 0 0 8px var(--amber); }
+  .status-pill.demo .dot   { background: var(--yellow); box-shadow: 0 0 8px var(--yellow); }
   .status-pill.off  .dot   { background: var(--red);   box-shadow: 0 0 8px var(--red); }
   .status-pill.live { color: var(--green); }
-  .status-pill.demo { color: var(--amber); }
+  .status-pill.demo { color: var(--yellow); }
   .status-pill.off  { color: var(--red); }
 
   /* ── Widget 2 · Delta bar ───────────────────────────────────── */
@@ -161,8 +192,8 @@
     color: var(--muted);
     transition: color 0.08s linear, text-shadow 0.08s linear;
   }
-  .delta-value.gain { color: var(--green); text-shadow: 0 0 22px rgba(0, 255, 157, 0.55); }
-  .delta-value.lose { color: var(--red);   text-shadow: 0 0 22px rgba(255, 41, 83, 0.55); }
+  .delta-value.gain { color: var(--green); text-shadow: 0 0 22px rgba(0, 224, 124, 0.55); }
+  .delta-value.lose { color: var(--red);   text-shadow: 0 0 22px rgba(232, 17, 45, 0.55); }
 
   .delta-track {
     position: relative;
@@ -191,13 +222,13 @@
   }
   .delta-fill.gain {
     transform: translateX(-100%);
-    background: linear-gradient(270deg, var(--green), rgba(0, 255, 157, 0.25));
-    box-shadow: 0 0 16px rgba(0, 255, 157, 0.6);
+    background: linear-gradient(270deg, var(--green), rgba(0, 224, 124, 0.25));
+    box-shadow: 0 0 16px rgba(0, 224, 124, 0.6);
   }
   .delta-fill.lose {
     transform: none;
-    background: linear-gradient(90deg, var(--red), rgba(255, 41, 83, 0.25));
-    box-shadow: 0 0 16px rgba(255, 41, 83, 0.6);
+    background: linear-gradient(90deg, var(--red), rgba(232, 17, 45, 0.25));
+    box-shadow: 0 0 16px rgba(232, 17, 45, 0.6);
   }
   .delta-scale {
     display: flex;
@@ -231,7 +262,7 @@
   }
   .legend-thr::before { background: var(--green); box-shadow: 0 0 6px var(--green); }
   .legend-brk::before { background: var(--red);   box-shadow: 0 0 6px var(--red); }
-  .legend-ref::before { background: var(--cyan);  box-shadow: 0 0 6px var(--cyan); }
+  .legend-ref::before { background: var(--blue);  box-shadow: 0 0 6px var(--blue); }
 
   /* ── Stat strip ─────────────────────────────────────────────── */
   .stats {
@@ -256,8 +287,8 @@
   }
   .grade-S { color: var(--green); text-shadow: 0 0 12px rgba(0,255,157,.6); }
   .grade-A { color: var(--green); }
-  .grade-B { color: var(--cyan); }
-  .grade-C { color: var(--amber); }
+  .grade-B { color: var(--blue); }
+  .grade-C { color: var(--yellow); }
   .grade-D { color: var(--red); }
 
   /* ── Lap toast + PB ripple ──────────────────────────────────── */
@@ -266,7 +297,7 @@
     left: 50%; top: 6px;
     transform: translate(-50%, -160%);
     background: var(--panel-deep);
-    border: 1px solid rgba(0, 255, 157, 0.5);
+    border: 1px solid rgba(0, 224, 124, 0.5);
     border-radius: 10px;
     padding: 7px 16px;
     font-family: var(--font-display);
@@ -274,7 +305,7 @@
     font-weight: 700;
     letter-spacing: 0.06em;
     color: var(--green);
-    box-shadow: 0 0 18px rgba(0, 255, 157, 0.35);
+    box-shadow: 0 0 18px rgba(0, 224, 124, 0.35);
     opacity: 0;
     pointer-events: none;
     z-index: 5;
@@ -300,7 +331,7 @@
     width: 380px; height: 380px;
     border-radius: 50%;
     border: 3px solid var(--green);
-    box-shadow: 0 0 70px rgba(0, 255, 157, 0.7), inset 0 0 70px rgba(0, 255, 157, 0.35);
+    box-shadow: 0 0 70px rgba(0, 224, 124, 0.7), inset 0 0 70px rgba(0, 224, 124, 0.35);
     opacity: 0;
   }
   #ripple.fire .ring { animation: ripple 1.15s cubic-bezier(0.2, 0.7, 0.3, 1) both; }
@@ -318,6 +349,12 @@
 <body>
 
 <div class="hud" id="hud">
+
+  <!-- ⓪ Brand bar -->
+  <section class="card brand-bar">
+    <div class="brand-name">iRaceHUD</div>
+    <div class="brand-sub">Racing Telemetry</div>
+  </section>
 
   <!-- ① Rotational Rank Widget -->
   <section class="card">
@@ -368,7 +405,7 @@
 <div id="ripple"><div class="ring"></div></div>
 
 <script>
-/* ═══════════════════════ ChronoHUD Overlay Runtime ═══════════════════════ */
+/* ═══════════════════════ iRaceHUD Overlay Runtime ═══════════════════════ */
 'use strict';
 
 const WS_URL = 'ws://localhost:8080';
@@ -568,16 +605,16 @@ function renderStaticLayer() {
     s.closePath();
   };
 
-  // Outer glow pass, then crisp neon-blue reference line
+  // Outer glow pass, then crisp royal-blue reference line
   trace();
-  s.strokeStyle = 'rgba(56, 225, 255, 0.12)';
+  s.strokeStyle = 'rgba(77, 100, 255, 0.16)';
   s.lineWidth = 9;
   s.stroke();
 
   trace();
-  s.strokeStyle = '#38e1ff';
+  s.strokeStyle = '#4d64ff';
   s.lineWidth = 2.4;
-  s.shadowColor = 'rgba(56, 225, 255, 0.9)';
+  s.shadowColor = 'rgba(77, 100, 255, 0.9)';
   s.shadowBlur = 10;
   s.stroke();
   s.shadowBlur = 0;
@@ -597,7 +634,7 @@ function renderStaticLayer() {
 
 /* Trail color: blend crimson↔green by pedal dominance, dim slate when coasting. */
 function trailColor(thr, brk, alpha) {
-  const IDLE = [96, 126, 158], GREEN = [0, 255, 157], RED = [255, 41, 83];
+  const IDLE = [104, 118, 165], GREEN = [0, 224, 124], RED = [232, 17, 45];
   const sum = thr + brk;
   let rgb;
   if (sum < 0.06) {
@@ -649,13 +686,13 @@ function drawFrame() {
   }
   ctx.restore();
 
-  // Player dot — glowing white indicator
+  // Player dot — RB-yellow indicator
   if (state.data && state.data.lapDistPct != null) {
     const p = pctToPoint(state.data.lapDistPct);
     ctx.save();
-    ctx.shadowColor = '#ffffff';
+    ctx.shadowColor = '#ffc906';
     ctx.shadowBlur = 16;
-    ctx.fillStyle = '#ffffff';
+    ctx.fillStyle = '#ffc906';
     ctx.beginPath();
     ctx.arc(p.x, p.y, 4.6, 0, Math.PI * 2);
     ctx.fill();
