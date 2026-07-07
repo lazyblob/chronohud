@@ -1,0 +1,789 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>ChronoHUD Overlay</title>
+<style>
+  /* ═══════════════════ ChronoHUD · overlay.html ═══════════════════
+     Fully transparent viewport for OBS / overlay hosts. Open in a
+     normal browser and press [B] to toggle a test backdrop.        */
+
+  @import url('https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&family=Rajdhani:wght@500;600;700&display=swap');
+
+  :root {
+    --panel:      rgba(12, 17, 27, 0.87);
+    --panel-deep: rgba(8, 11, 19, 0.92);
+    --edge:       rgba(148, 163, 184, 0.16);
+    --ink:        #e9f0fa;
+    --muted:      #8ca1bc;
+    --green:      #00ff9d;
+    --red:        #ff2953;
+    --cyan:       #38e1ff;
+    --amber:      #ffb454;
+    --font-display: 'Chakra Petch', 'Segoe UI', system-ui, sans-serif;
+    --font-label:   'Rajdhani', 'Segoe UI', system-ui, sans-serif;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  html, body { background: transparent; }
+  body {
+    font-family: var(--font-label);
+    color: var(--ink);
+    -webkit-font-smoothing: antialiased;
+    overflow: hidden;
+  }
+  body.debug-bg {
+    background:
+      radial-gradient(1200px 600px at 70% 20%, #16233b 0%, transparent 60%),
+      #0a0f18;
+  }
+
+  /* ── HUD column ─────────────────────────────────────────────── */
+  .hud {
+    width: 380px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 12px;
+    position: relative;
+  }
+
+  .card {
+    background: var(--panel);
+    border: 1px solid var(--edge);
+    border-radius: 14px;
+    padding: 12px 14px;
+    position: relative;
+    overflow: hidden;
+    transition: box-shadow 0.4s ease;
+  }
+  .card::before { /* neon trim */
+    content: '';
+    position: absolute;
+    top: 0; left: 10%; right: 10%;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--cyan), transparent);
+    opacity: 0.7;
+  }
+  .hud.best-glow .card {
+    box-shadow: 0 0 22px rgba(0, 255, 157, 0.45), inset 0 0 18px rgba(0, 255, 157, 0.08);
+  }
+
+  .eyebrow {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: var(--muted);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  /* ── Widget 1 · Rotational rank tower ───────────────────────── */
+  .rank-title {
+    font-family: var(--font-display);
+    font-size: 17px;
+    font-weight: 700;
+    letter-spacing: 0.03em;
+    margin-top: 6px;
+    color: var(--cyan);
+    text-shadow: 0 0 14px rgba(56, 225, 255, 0.35);
+    min-height: 22px;
+  }
+  .rank-sub { font-size: 12px; color: var(--muted); font-weight: 600; margin-top: 1px; }
+
+  .rank-rotate { animation: tier-in 0.45s ease both; }
+  @keyframes tier-in {
+    from { opacity: 0; transform: translateY(9px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  .board { list-style: none; margin-top: 9px; }
+  .board li {
+    display: grid;
+    grid-template-columns: 42px 1fr auto;
+    gap: 8px;
+    align-items: baseline;
+    padding: 3px 8px;
+    border-radius: 7px;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--muted);
+    font-variant-numeric: tabular-nums;
+  }
+  .board .pos { color: var(--ink); opacity: 0.75; }
+  .board .gap { font-family: var(--font-display); font-size: 12px; }
+  .board li.me {
+    color: var(--ink);
+    background: rgba(56, 225, 255, 0.09);
+    border: 1px solid rgba(56, 225, 255, 0.35);
+    box-shadow: 0 0 12px rgba(56, 225, 255, 0.12);
+  }
+  .board li.me .gap { color: var(--cyan); }
+  .board.roll li { animation: row-in 0.4s ease both; }
+  .board.roll li:nth-child(1) { animation-delay: 0.02s; }
+  .board.roll li:nth-child(2) { animation-delay: 0.06s; }
+  .board.roll li:nth-child(3) { animation-delay: 0.10s; }
+  .board.roll li:nth-child(4) { animation-delay: 0.14s; }
+  .board.roll li:nth-child(5) { animation-delay: 0.18s; }
+  @keyframes row-in {
+    from { opacity: 0; transform: translateY(-7px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  .status-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 10px;
+    letter-spacing: 0.16em;
+  }
+  .status-pill .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--muted); }
+  .status-pill.live .dot   { background: var(--green); box-shadow: 0 0 8px var(--green); }
+  .status-pill.demo .dot   { background: var(--amber); box-shadow: 0 0 8px var(--amber); }
+  .status-pill.off  .dot   { background: var(--red);   box-shadow: 0 0 8px var(--red); }
+  .status-pill.live { color: var(--green); }
+  .status-pill.demo { color: var(--amber); }
+  .status-pill.off  { color: var(--red); }
+
+  /* ── Widget 2 · Delta bar ───────────────────────────────────── */
+  .delta-value {
+    font-family: var(--font-display);
+    font-size: 38px;
+    font-weight: 700;
+    line-height: 1.05;
+    margin-top: 4px;
+    font-variant-numeric: tabular-nums;
+    text-align: center;
+    color: var(--muted);
+    transition: color 0.08s linear, text-shadow 0.08s linear;
+  }
+  .delta-value.gain { color: var(--green); text-shadow: 0 0 22px rgba(0, 255, 157, 0.55); }
+  .delta-value.lose { color: var(--red);   text-shadow: 0 0 22px rgba(255, 41, 83, 0.55); }
+
+  .delta-track {
+    position: relative;
+    height: 14px;
+    margin-top: 8px;
+    border-radius: 999px;
+    background: var(--panel-deep);
+    border: 1px solid var(--edge);
+    overflow: hidden;
+  }
+  .delta-track::after { /* center zero marker */
+    content: '';
+    position: absolute;
+    left: 50%; top: -2px; bottom: -2px;
+    width: 2px;
+    background: rgba(233, 240, 250, 0.55);
+    transform: translateX(-50%);
+  }
+  .delta-fill {
+    position: absolute;
+    top: 0; bottom: 0;
+    left: 50%;
+    width: 0%;
+    transition: width 0.07s linear, background 0.07s linear;
+    border-radius: 999px;
+  }
+  .delta-fill.gain {
+    transform: translateX(-100%);
+    background: linear-gradient(270deg, var(--green), rgba(0, 255, 157, 0.25));
+    box-shadow: 0 0 16px rgba(0, 255, 157, 0.6);
+  }
+  .delta-fill.lose {
+    transform: none;
+    background: linear-gradient(90deg, var(--red), rgba(255, 41, 83, 0.25));
+    box-shadow: 0 0 16px rgba(255, 41, 83, 0.6);
+  }
+  .delta-scale {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 5px;
+    font-size: 10px;
+    letter-spacing: 0.14em;
+    color: var(--muted);
+    font-weight: 600;
+  }
+
+  /* ── Widget 3 · Input map ───────────────────────────────────── */
+  #trackCanvas { display: block; width: 100%; height: 226px; margin-top: 6px; }
+  .map-legend {
+    display: flex;
+    gap: 14px;
+    justify-content: center;
+    margin-top: 2px;
+    font-size: 10px;
+    letter-spacing: 0.14em;
+    color: var(--muted);
+    font-weight: 600;
+  }
+  .map-legend span::before {
+    content: '';
+    display: inline-block;
+    width: 8px; height: 8px;
+    border-radius: 2px;
+    margin-right: 5px;
+    vertical-align: -1px;
+  }
+  .legend-thr::before { background: var(--green); box-shadow: 0 0 6px var(--green); }
+  .legend-brk::before { background: var(--red);   box-shadow: 0 0 6px var(--red); }
+  .legend-ref::before { background: var(--cyan);  box-shadow: 0 0 6px var(--cyan); }
+
+  /* ── Stat strip ─────────────────────────────────────────────── */
+  .stats {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 8px;
+  }
+  .stat { text-align: center; }
+  .stat .k {
+    font-size: 9px;
+    letter-spacing: 0.18em;
+    color: var(--muted);
+    font-weight: 700;
+    text-transform: uppercase;
+  }
+  .stat .v {
+    font-family: var(--font-display);
+    font-size: 16px;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    margin-top: 2px;
+  }
+  .grade-S { color: var(--green); text-shadow: 0 0 12px rgba(0,255,157,.6); }
+  .grade-A { color: var(--green); }
+  .grade-B { color: var(--cyan); }
+  .grade-C { color: var(--amber); }
+  .grade-D { color: var(--red); }
+
+  /* ── Lap toast + PB ripple ──────────────────────────────────── */
+  .toast {
+    position: absolute;
+    left: 50%; top: 6px;
+    transform: translate(-50%, -160%);
+    background: var(--panel-deep);
+    border: 1px solid rgba(0, 255, 157, 0.5);
+    border-radius: 10px;
+    padding: 7px 16px;
+    font-family: var(--font-display);
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    color: var(--green);
+    box-shadow: 0 0 18px rgba(0, 255, 157, 0.35);
+    opacity: 0;
+    pointer-events: none;
+    z-index: 5;
+    white-space: nowrap;
+  }
+  .toast.show { animation: toast 2.6s ease both; }
+  @keyframes toast {
+    0%   { opacity: 0; transform: translate(-50%, -160%); }
+    12%  { opacity: 1; transform: translate(-50%, 10%); }
+    82%  { opacity: 1; transform: translate(-50%, 10%); }
+    100% { opacity: 0; transform: translate(-50%, -160%); }
+  }
+
+  #ripple {
+    position: fixed;
+    inset: 0;
+    display: grid;
+    place-items: center;
+    pointer-events: none;
+    z-index: 9;
+  }
+  #ripple .ring {
+    width: 380px; height: 380px;
+    border-radius: 50%;
+    border: 3px solid var(--green);
+    box-shadow: 0 0 70px rgba(0, 255, 157, 0.7), inset 0 0 70px rgba(0, 255, 157, 0.35);
+    opacity: 0;
+  }
+  #ripple.fire .ring { animation: ripple 1.15s cubic-bezier(0.2, 0.7, 0.3, 1) both; }
+  @keyframes ripple {
+    0%   { opacity: 0.9; transform: scale(0.18); }
+    100% { opacity: 0;   transform: scale(3.2); }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .rank-rotate, .board.roll li, .toast.show, #ripple.fire .ring { animation: none !important; }
+    .toast.show { opacity: 1; transform: translate(-50%, 10%); }
+  }
+</style>
+</head>
+<body>
+
+<div class="hud" id="hud">
+
+  <!-- ① Rotational Rank Widget -->
+  <section class="card">
+    <div class="eyebrow">
+      <span>Scouting Ladder</span>
+      <span class="status-pill off" id="status"><span class="dot"></span><span id="statusText">OFFLINE</span></span>
+    </div>
+    <div class="rank-title" id="rankTitle">CONNECTING…</div>
+    <div class="rank-sub" id="rankSub">waiting for agent on ws://localhost:8080</div>
+    <ul class="board" id="board"></ul>
+  </section>
+
+  <!-- ② Trackmania-style Delta Bar -->
+  <section class="card">
+    <div class="eyebrow">
+      <span>Δ vs World Record</span>
+      <span id="targetLap">TARGET --:--.---</span>
+    </div>
+    <div class="delta-value" id="deltaValue">+0.000</div>
+    <div class="delta-track"><div class="delta-fill" id="deltaFill"></div></div>
+    <div class="delta-scale"><span>-1.5s GAINING</span><span>LOSING +1.5s</span></div>
+  </section>
+
+  <!-- ③ 2D Input Map -->
+  <section class="card">
+    <div class="eyebrow"><span>Live Input Map</span><span id="lapLabel">LAP —</span></div>
+    <canvas id="trackCanvas"></canvas>
+    <div class="map-legend">
+      <span class="legend-ref">REFERENCE</span>
+      <span class="legend-thr">THROTTLE</span>
+      <span class="legend-brk">BRAKE</span>
+    </div>
+  </section>
+
+  <!-- Stat strip -->
+  <section class="card">
+    <div class="stats">
+      <div class="stat"><div class="k">Speed</div><div class="v" id="speed">—</div></div>
+      <div class="stat"><div class="k">Last Lap</div><div class="v" id="lastLap">--.---</div></div>
+      <div class="stat"><div class="k">Best</div><div class="v" id="bestLap">--.---</div></div>
+      <div class="stat"><div class="k">Scout σ</div><div class="v" id="grade">—</div></div>
+    </div>
+  </section>
+
+  <div class="toast" id="toast">NEW SESSION BEST</div>
+</div>
+
+<div id="ripple"><div class="ring"></div></div>
+
+<script>
+/* ═══════════════════════ ChronoHUD Overlay Runtime ═══════════════════════ */
+'use strict';
+
+const WS_URL = 'ws://localhost:8080';
+const $ = (id) => document.getElementById(id);
+
+/* ── Shared state (memory only — overlays must survive without storage) ── */
+const state = {
+  connected: false,
+  source: null,            // 'live' | 'demo'
+  lastMsgAt: 0,
+  targetLapTime: null,
+  data: null,              // latest telemetry payload
+  trail: [],               // [{x,y,thr,brk,ts}] input-painted ghost trail
+  driverClub: 'your club',
+  driverCountry: '—',
+};
+
+/* ── Formatting helpers ── */
+function fmtLap(sec) {
+  if (sec == null || sec <= 0) return '--.---';
+  const m = Math.floor(sec / 60);
+  const s = (sec - m * 60).toFixed(3).padStart(6, '0');
+  return m > 0 ? m + ':' + s : s;
+}
+function fmtDelta(d) {
+  if (d == null) return '+0.000';
+  return (d < 0 ? '-' : '+') + Math.abs(d).toFixed(3);
+}
+
+/* ══════════════════════ ① ROTATIONAL RANK WIDGET ═════════════════════════ */
+
+function buildTiers() {
+  const c = state.driverCountry, club = state.driverClub;
+  const best = fmtLap(state.data?.sessionBestTime);
+  return [
+    {
+      title: 'GLOBAL RANK: #412',
+      sub: 'Top 5% · 8,240 drivers on this combo',
+      rows: [
+        { pos: 410, name: 'K. Aalto',     gap: '-0.212' },
+        { pos: 411, name: 'D. Moreau',    gap: '-0.087' },
+        { pos: 412, name: 'YOU',          gap: best, me: true },
+        { pos: 413, name: 'R. Tanaka',    gap: '+0.140' },
+        { pos: 414, name: 'L. Krüger',    gap: '+0.395' },
+      ],
+    },
+    {
+      title: 'REGIONAL RANK: #14 in ' + c,
+      sub: 'National ladder · updated live',
+      rows: [
+        { pos: 12, name: 'S. Whitfield', gap: '-0.301' },
+        { pos: 13, name: 'A. Okafor',    gap: '-0.054' },
+        { pos: 14, name: 'YOU',          gap: best, me: true },
+        { pos: 15, name: 'J. Barros',    gap: '+0.226' },
+        { pos: 16, name: 'M. Lindqvist', gap: '+0.518' },
+      ],
+    },
+    {
+      title: 'CLUB RANK: #2 in Club ' + club + ' 🏆',
+      sub: 'One scalp from the club record',
+      rows: [
+        { pos: 1, name: 'T. Novak',   gap: '-0.163' },
+        { pos: 2, name: 'YOU',        gap: best, me: true },
+        { pos: 3, name: 'C. Reyes',   gap: '+0.410' },
+        { pos: 4, name: 'P. Duval',   gap: '+0.688' },
+        { pos: 5, name: 'H. Sato',    gap: '+1.102' },
+      ],
+    },
+  ];
+}
+
+let tierIndex = 0;
+function renderTier() {
+  const tier = buildTiers()[tierIndex];
+  const title = $('rankTitle'), sub = $('rankSub'), board = $('board');
+
+  title.textContent = tier.title;
+  sub.textContent = tier.sub;
+  title.classList.remove('rank-rotate');
+  void title.offsetWidth; // restart entrance animation
+  title.classList.add('rank-rotate');
+
+  board.innerHTML = '';
+  for (const r of tier.rows) {
+    const li = document.createElement('li');
+    if (r.me) li.classList.add('me');
+    li.innerHTML =
+      '<span class="pos">#' + r.pos + '</span>' +
+      '<span class="name"></span>' +
+      '<span class="gap"></span>';
+    li.querySelector('.name').textContent = r.name;
+    li.querySelector('.gap').textContent = r.gap;
+    board.appendChild(li);
+  }
+  board.classList.remove('roll');
+  void board.offsetWidth;
+  board.classList.add('roll');
+}
+setInterval(() => {
+  if (!state.connected) return;
+  tierIndex = (tierIndex + 1) % 3;
+  renderTier();
+}, 5000);
+
+/* ══════════════════════ ② DELTA BAR ══════════════════════════════════════ */
+
+const DELTA_FULL_SCALE = 1.5;   // seconds mapped to a full half-bar
+const DELTA_DEADZONE  = 0.005;  // avoid green/red flicker at ~0.000
+
+function renderDelta(d) {
+  const valueEl = $('deltaValue'), fillEl = $('deltaFill');
+  valueEl.textContent = fmtDelta(d);
+
+  valueEl.classList.remove('gain', 'lose');
+  fillEl.classList.remove('gain', 'lose');
+  if (d == null || Math.abs(d) < DELTA_DEADZONE) {
+    fillEl.style.width = '0%';
+    return;
+  }
+  const cls = d < 0 ? 'gain' : 'lose';   // negative = faster = neon green
+  valueEl.classList.add(cls);
+  fillEl.classList.add(cls);
+  const mag = Math.min(Math.abs(d) / DELTA_FULL_SCALE, 1);
+  fillEl.style.width = (mag * 50).toFixed(2) + '%';
+}
+
+/* ══════════════════════ ③ 2D INPUT MAP CANVAS ════════════════════════════ */
+
+const canvas = $('trackCanvas');
+const ctx = canvas.getContext('2d');
+let W = 0, H = 0, DPR = 1;
+let trackPts = [];   // arc-length-uniform polyline of the circuit
+let cumLen = [];     // cumulative length per point
+let totalLen = 0;
+let staticLayer = null; // pre-rendered neon-blue reference track
+
+function setupCanvas() {
+  const rect = canvas.getBoundingClientRect();
+  DPR = window.devicePixelRatio || 1;
+  W = rect.width; H = rect.height;
+  canvas.width = Math.round(W * DPR);
+  canvas.height = Math.round(H * DPR);
+  ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+  buildTrackGeometry();
+  renderStaticLayer();
+}
+
+/* Stylized closed circuit: an ellipse with harmonic radial modulation gives
+   an organic road-course silhouette. Points are dense enough that mapping
+   LapDistPct by cumulative arc length keeps the dot's speed believable.    */
+function buildTrackGeometry() {
+  const N = 900;
+  const cx = W / 2, cy = H / 2 + 2;
+  const rx = W * 0.40, ry = H * 0.365;
+  trackPts = [];
+  cumLen = [0];
+  for (let i = 0; i <= N; i++) {
+    const th = (i / N) * Math.PI * 2 + Math.PI / 2; // start/finish at bottom
+    const r = 1 + 0.20 * Math.sin(2 * th + 2.1)
+                + 0.10 * Math.sin(3 * th + 0.5)
+                - 0.06 * Math.sin(5 * th);
+    trackPts.push({ x: cx + rx * r * Math.cos(th), y: cy + ry * r * Math.sin(th) });
+    if (i > 0) {
+      const a = trackPts[i - 1], b = trackPts[i];
+      cumLen.push(cumLen[i - 1] + Math.hypot(b.x - a.x, b.y - a.y));
+    }
+  }
+  totalLen = cumLen[cumLen.length - 1];
+}
+
+function pctToPoint(pct) {
+  const target = ((pct % 1) + 1) % 1 * totalLen;
+  let lo = 0, hi = cumLen.length - 1;
+  while (lo < hi) { // binary search the cumulative-length table
+    const mid = (lo + hi) >> 1;
+    if (cumLen[mid] < target) lo = mid + 1; else hi = mid;
+  }
+  const i = Math.max(1, lo);
+  const segLen = cumLen[i] - cumLen[i - 1] || 1;
+  const f = (target - cumLen[i - 1]) / segLen;
+  const a = trackPts[i - 1], b = trackPts[i];
+  return { x: a.x + f * (b.x - a.x), y: a.y + f * (b.y - a.y) };
+}
+
+function renderStaticLayer() {
+  staticLayer = document.createElement('canvas');
+  staticLayer.width = canvas.width;
+  staticLayer.height = canvas.height;
+  const s = staticLayer.getContext('2d');
+  s.setTransform(DPR, 0, 0, DPR, 0, 0);
+  s.lineJoin = 'round';
+
+  const trace = () => {
+    s.beginPath();
+    s.moveTo(trackPts[0].x, trackPts[0].y);
+    for (let i = 1; i < trackPts.length; i++) s.lineTo(trackPts[i].x, trackPts[i].y);
+    s.closePath();
+  };
+
+  // Outer glow pass, then crisp neon-blue reference line
+  trace();
+  s.strokeStyle = 'rgba(56, 225, 255, 0.12)';
+  s.lineWidth = 9;
+  s.stroke();
+
+  trace();
+  s.strokeStyle = '#38e1ff';
+  s.lineWidth = 2.4;
+  s.shadowColor = 'rgba(56, 225, 255, 0.9)';
+  s.shadowBlur = 10;
+  s.stroke();
+  s.shadowBlur = 0;
+
+  // Start/finish tick, perpendicular to the racing line
+  const a = trackPts[0], b = trackPts[4];
+  const dx = b.x - a.x, dy = b.y - a.y;
+  const len = Math.hypot(dx, dy) || 1;
+  const nx = -dy / len, ny = dx / len;
+  s.strokeStyle = '#e9f0fa';
+  s.lineWidth = 3;
+  s.beginPath();
+  s.moveTo(a.x + nx * 8, a.y + ny * 8);
+  s.lineTo(a.x - nx * 8, a.y - ny * 8);
+  s.stroke();
+}
+
+/* Trail color: blend crimson↔green by pedal dominance, dim slate when coasting. */
+function trailColor(thr, brk, alpha) {
+  const IDLE = [96, 126, 158], GREEN = [0, 255, 157], RED = [255, 41, 83];
+  const sum = thr + brk;
+  let rgb;
+  if (sum < 0.06) {
+    rgb = IDLE;
+  } else {
+    const bw = brk / sum;                       // brake dominance 0..1
+    const mix = GREEN.map((g, i) => g + (RED[i] - g) * bw);
+    const intensity = Math.min(1, sum);
+    rgb = mix.map((m, i) => IDLE[i] + (m - IDLE[i]) * intensity);
+  }
+  return 'rgba(' + rgb.map((v) => v | 0).join(',') + ',' + alpha.toFixed(3) + ')';
+}
+
+const TRAIL_MAX = 150;       // ~2.5s of history at 60 Hz
+const TRAIL_FADE_MS = 2400;
+
+function pushTrailSample(payload) {
+  const p = pctToPoint(payload.lapDistPct);
+  state.trail.push({
+    x: p.x, y: p.y,
+    thr: payload.throttleInput ?? 0,
+    brk: payload.brakeInput ?? 0,
+    ts: performance.now(),
+  });
+  if (state.trail.length > TRAIL_MAX) state.trail.shift();
+}
+
+function drawFrame() {
+  ctx.clearRect(0, 0, W, H);
+  if (staticLayer) ctx.drawImage(staticLayer, 0, 0, W, H);
+
+  const now = performance.now();
+
+  // Input-painted trail (additive blend for the neon pop)
+  ctx.save();
+  ctx.globalCompositeOperation = 'lighter';
+  ctx.lineCap = 'round';
+  for (let i = 1; i < state.trail.length; i++) {
+    const a = state.trail[i - 1], b = state.trail[i];
+    const age = now - b.ts;
+    const fade = Math.max(0, 1 - age / TRAIL_FADE_MS);
+    if (fade <= 0) continue;
+    ctx.strokeStyle = trailColor(b.thr, b.brk, 0.75 * fade);
+    ctx.lineWidth = 4.2;
+    ctx.beginPath();
+    ctx.moveTo(a.x, a.y);
+    ctx.lineTo(b.x, b.y);
+    ctx.stroke();
+  }
+  ctx.restore();
+
+  // Player dot — glowing white indicator
+  if (state.data && state.data.lapDistPct != null) {
+    const p = pctToPoint(state.data.lapDistPct);
+    ctx.save();
+    ctx.shadowColor = '#ffffff';
+    ctx.shadowBlur = 16;
+    ctx.fillStyle = '#ffffff';
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, 4.6, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  } else {
+    ctx.fillStyle = 'rgba(140, 161, 188, 0.8)';
+    ctx.font = '600 12px Rajdhani, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('AWAITING TELEMETRY', W / 2, H / 2);
+  }
+
+  requestAnimationFrame(drawFrame);
+}
+
+/* ══════════════════════ PB RIPPLE + LAP TOAST ════════════════════════════ */
+
+function firePersonalBest(lapTime) {
+  const ripple = $('ripple');
+  ripple.classList.remove('fire');
+  void ripple.offsetWidth;
+  ripple.classList.add('fire');
+
+  const hud = $('hud');
+  hud.classList.add('best-glow');
+  setTimeout(() => hud.classList.remove('best-glow'), 1400);
+
+  const toast = $('toast');
+  toast.textContent = 'NEW SESSION BEST · ' + fmtLap(lapTime);
+  toast.classList.remove('show');
+  void toast.offsetWidth;
+  toast.classList.add('show');
+}
+
+/* ══════════════════════ STAT STRIP ═══════════════════════════════════════ */
+
+function renderStats(d) {
+  $('speed').textContent = d.currentSpeed != null ? Math.round(d.currentSpeed) + ' km/h' : '—';
+  $('lastLap').textContent = fmtLap(d.lastLapTime);
+  $('bestLap').textContent = fmtLap(d.sessionBestTime);
+  $('lapLabel').textContent = 'LAP ' + (d.lap ?? '—');
+
+  const g = d.consistencyGrade;
+  const el = $('grade');
+  el.className = 'v';
+  if (g && g.tier !== '—') {
+    el.classList.add('grade-' + g.tier);
+    el.textContent = g.tier + ' · ' + (d.consistencyVariance != null ? d.consistencyVariance.toFixed(3) + 's' : '');
+    el.title = g.label;
+  } else {
+    el.textContent = '—';
+  }
+}
+
+/* ══════════════════════ WEBSOCKET CLIENT ═════════════════════════════════ */
+
+let ws = null;
+
+function connect() {
+  ws = new WebSocket(WS_URL);
+
+  ws.onopen = () => {
+    state.connected = true;
+    renderTier();
+  };
+
+  ws.onmessage = (evt) => {
+    let msg;
+    try { msg = JSON.parse(evt.data); } catch { return; }
+    state.lastMsgAt = performance.now();
+
+    if (msg.type === 'config') {
+      state.source = msg.source;
+      state.targetLapTime = msg.targetLapTime;
+      $('targetLap').textContent = 'TARGET ' + fmtLap(msg.targetLapTime);
+      return;
+    }
+
+    if (msg.type === 'telemetry') {
+      state.data = msg;
+      state.source = msg.source || state.source;
+      if (msg.driverClub) state.driverClub = msg.driverClub;
+      if (msg.driverCountry) state.driverCountry = msg.driverCountry;
+      renderDelta(msg.liveDelta);
+      renderStats(msg);
+      if (msg.lapDistPct != null) pushTrailSample(msg);
+      return;
+    }
+
+    if (msg.type === 'lap' && msg.isSessionBest) {
+      firePersonalBest(msg.lapTime);
+    }
+  };
+
+  ws.onclose = () => {
+    state.connected = false;
+    state.data = null;
+    setTimeout(connect, 2000); // quiet auto-reconnect loop
+  };
+  ws.onerror = () => ws.close();
+}
+
+/* Status pill: LIVE / DEMO / OFFLINE, with a staleness watchdog. */
+setInterval(() => {
+  const pill = $('status'), txt = $('statusText');
+  const fresh = performance.now() - state.lastMsgAt < 1500;
+  pill.classList.remove('live', 'demo', 'off');
+  if (state.connected && fresh && state.source === 'live') {
+    pill.classList.add('live'); txt.textContent = 'LIVE';
+  } else if (state.connected && fresh) {
+    pill.classList.add('demo'); txt.textContent = 'DEMO';
+  } else if (state.connected) {
+    pill.classList.add('demo'); txt.textContent = 'WAITING';
+  } else {
+    pill.classList.add('off'); txt.textContent = 'OFFLINE';
+    $('rankTitle').textContent = 'CONNECTING…';
+    $('rankSub').textContent = 'waiting for agent on ws://localhost:8080';
+  }
+}, 400);
+
+/* ── Boot ── */
+window.addEventListener('keydown', (e) => {
+  if (e.key.toLowerCase() === 'b') document.body.classList.toggle('debug-bg');
+});
+window.addEventListener('resize', setupCanvas);
+
+setupCanvas();
+requestAnimationFrame(drawFrame);
+connect();
+</script>
+</body>
+</html>
