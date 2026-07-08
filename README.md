@@ -8,9 +8,11 @@ Trackmania-inspired telemetry HUD overlay for **iRacing** — a live world-recor
 
 ## Features
 
-- **Live WR delta bar** — compares your elapsed lap time against a reference profile at your exact `LapDistPct`, interpolated between 21 milestone splits. Snaps **neon green** when you're gaining, **crimson** when you're losing.
-- **Rotational rank tower** — auto-cycles Global → Regional → Club standings every 5 s, with a mini-leaderboard centered on your position (mock tiers until the cloud API lands).
-- **Input-painted track map** — a glowing dot laps a stylized circuit, trailing a path colored by pedal dominance: green under throttle, crimson under braking, slate when coasting.
+- **Live ghost delta bar** — compares your elapsed lap time against a reference ghost at your exact `LapDistPct`, interpolated between 21 milestone splits. In live mode the ghost is **your own personal best for that exact track + car**, captured automatically and saved between sessions — your first clean lap sets the target, every lap after races it. Snaps **neon green** when you're gaining, **crimson** when you're losing. (Demo mode races a built-in 1:20.4 reference.)
+- **Rotational rank tower** — auto-cycles Global → Regional → Club standings every 5 s, with a mini-leaderboard centered on you, by name (competitor rows are labeled sample data until the cloud API lands).
+- **Real track map, learned from GPS** — while you drive, the agent samples your Lat/Lon along the lap and builds the actual circuit outline; it's saved per track, so the map shows the real layout from then on. A glowing dot laps it, trailing a path colored by pedal dominance: green under throttle, crimson under braking, slate when coasting. (Demo mode shows a stylized loop.)
+- **Per-widget layout** — every HUD card is an independent widget: enter edit mode (**Ctrl+Shift+M** in game, **E** in a browser) to drag, resize, hide, or restore each one; your layout is remembered.
+- **Inputs widget** — live throttle/brake bars plus gear + RPM readout.
 - **Pro Scout grade** — rolling σ of your last 5 valid laps, graded S *"Alien Pace"* (< 0.12 s) down to D.
 - **PB ripple** — a full-viewport green pulse whenever you beat your session best.
 - **Demo mode** — the entire HUD runs without iRacing (`npm run demo`), driven by a synthetic car with sector-level pace wobble.
@@ -39,7 +41,7 @@ npm run game         # LIVE — transparent, always-on-top, click-through window
 npm run game:demo    # same window, synthetic car
 ```
 
-One command boots the whole stack: an Electron window floats the HUD over iRacing while clicks pass straight through to the sim. Run iRacing in **borderless windowed** mode (exclusive fullscreen paints over every OS window). Hotkeys: **Ctrl+Shift+Q** quits, **Ctrl+Shift+M** toggles mouse click-through. On Windows, the `Start iRaceHUD - *.bat` launchers wrap these commands for double-click startup.
+One command boots the whole stack: a full-screen transparent Electron window floats the HUD widgets over iRacing while clicks pass straight through to the sim. Run iRacing in **borderless windowed** mode (exclusive fullscreen paints over every OS window). Hotkeys: **Ctrl+Shift+Q** quits, **Ctrl+Shift+M** toggles edit mode (drag widgets, resize via the yellow corner, ✕ hides, DONE locks), **Ctrl+Shift+ +/−** zooms the whole HUD. On Windows, the `Start iRaceHUD - *.bat` launchers wrap these commands for double-click startup.
 
 ### OBS / streaming
 
@@ -83,10 +85,11 @@ Delta convention: `liveDelta = yourElapsed − recordProfileTime` → **negative
 
 ## Roadmap
 
+- [x] Per-track ghost profiles — your personal best per track + car, persisted (real WR ghosts arrive with the cloud API)
+- [x] Real track shapes learned from iRacing GPS telemetry
 - [ ] Cloud lap ingestion — wire `uploadLapToCloud()` (already called on every completed lap) to the central API
-- [ ] Real global / regional / club leaderboards replacing the mock tiers
-- [ ] Per-track ghost profiles replacing the hardcoded WR reference
-- [ ] Real track shapes from iRacing GPS telemetry instead of the stylized loop
+- [ ] Real global / regional / club leaderboards replacing the sample tiers
+- [ ] More widgets: fuel calculator, relative/standings, lap-time history graph
 - [ ] Scouting dashboard: flag high-consistency, high-pace drivers across private sessions
 
 ## Notes
@@ -94,7 +97,9 @@ Delta convention: `liveDelta = yourElapsed − recordProfileTime` → **negative
 - `irsdk-node`'s API surface has shifted between majors, so telemetry is read through a defensive `readVar()` that tolerates both `{value:[x]}` wrappers and raw numbers.
 - Driver strings fall back gracefully from `ClubName`/`CountryCode` to the newer `FlairName`/`FlairShortName` session fields.
 - The newest launcher wins: a stale iRaceHUD agent still holding port 8080 (yesterday's forgotten demo window) is evicted automatically on startup. Only node/electron processes are ever touched.
-- Port 8080 taken by something else? Change `wsPort` in `agent.js` and `WS_URL` in `overlay.html`.
+- Port 8080 taken by something else? Set the `IRACEHUD_PORT` env var (agent) and open `overlay.html?ws=ws://localhost:<port>`.
+- PB ghosts and learned track shapes live in `%APPDATA%\iRaceHUD\` (`pb-profiles.json`, `track-shapes.json`) — delete a file to reset.
+- Speed shows **mph** automatically for US/UK drivers, km/h otherwise; press **U** in a browser to flip it.
 
 ## License
 
