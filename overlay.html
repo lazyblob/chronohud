@@ -43,14 +43,86 @@
       linear-gradient(112deg, #b30020 0%, #4d0f2e 30%, #0d1130 55%, #101a5e 78%, #1626a8 100%);
   }
 
-  /* ── HUD column ─────────────────────────────────────────────── */
-  .hud {
+  /* ── HUD layer: every card is an independent widget ─────────── */
+  .hud { position: fixed; inset: 0; }
+
+  .widget {
+    position: absolute;
     width: 380px;
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-    padding: 12px;
-    position: relative;
+    transform-origin: top left;
+  }
+  .widget.hidden { display: none; }
+  body.edit .widget {
+    outline: 2px dashed rgba(255, 201, 6, 0.6);
+    outline-offset: 3px;
+    cursor: move;
+    user-select: none;
+  }
+  body.edit .widget.dragging { outline-style: solid; outline-color: var(--yellow); }
+
+  .w-hide {
+    display: none;
+    position: absolute;
+    top: 5px; right: 22px;
+    z-index: 6;
+    width: 20px; height: 20px;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid rgba(232, 17, 45, 0.6);
+    background: rgba(6, 8, 24, 0.92);
+    color: #ff5c74;
+    border-radius: 5px;
+    font: 700 11px/1 var(--font-label);
+    cursor: pointer;
+  }
+  body.edit .w-hide { display: flex; }
+
+  .w-resize {
+    display: none;
+    position: absolute;
+    right: 2px; bottom: 2px;
+    width: 16px; height: 16px;
+    z-index: 6;
+    cursor: nwse-resize;
+    background: linear-gradient(135deg, transparent 55%, rgba(255, 201, 6, 0.85) 55%);
+  }
+  body.edit .w-resize { display: block; }
+
+  #editBar {
+    position: fixed;
+    top: 10px; left: 50%;
+    transform: translateX(-50%);
+    display: none;
+    align-items: center;
+    gap: 12px;
+    padding: 8px 14px;
+    background: var(--panel-deep);
+    border: 1px solid rgba(255, 201, 6, 0.5);
+    border-radius: 10px;
+    z-index: 20;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    color: var(--muted);
+    white-space: nowrap;
+  }
+  body.edit #editBar { display: flex; }
+  #editBar .eb-title { color: var(--yellow); font-weight: 700; letter-spacing: 0.18em; }
+  #editBar button {
+    background: rgba(255, 201, 6, 0.14);
+    color: var(--yellow);
+    border: 1px solid rgba(255, 201, 6, 0.5);
+    border-radius: 6px;
+    padding: 3px 10px;
+    font: 700 11px var(--font-label);
+    letter-spacing: 0.12em;
+    cursor: pointer;
+  }
+  #ebHidden button {
+    background: rgba(77, 100, 255, 0.14);
+    color: #9fb0ff;
+    border-color: rgba(77, 100, 255, 0.5);
+    margin-right: 6px;
   }
 
   .card {
@@ -60,7 +132,8 @@
     /* angular top-right cut, echoing verstappen.com's diagonal edges */
     clip-path: polygon(0 0, calc(100% - 16px) 0, 100% 16px, 100% 100%, 0 100%);
     padding: 12px 14px;
-    position: relative;
+    /* positioning comes from .widget (absolute) — don't redeclare it here,
+       a later `position: relative` would override the widget layout */
     overflow: hidden;
     transition: box-shadow 0.4s ease;
   }
@@ -264,6 +337,33 @@
   .legend-brk::before { background: var(--red);   box-shadow: 0 0 6px var(--red); }
   .legend-ref::before { background: var(--blue);  box-shadow: 0 0 6px var(--blue); }
 
+  /* ── Widget 4 · Pedal inputs ────────────────────────────────── */
+  .input-bars { margin-top: 8px; display: grid; gap: 7px; }
+  .input-row {
+    display: grid;
+    grid-template-columns: 34px 1fr 44px;
+    align-items: center;
+    gap: 8px;
+  }
+  .input-k { font-size: 10px; font-weight: 700; letter-spacing: 0.14em; color: var(--muted); }
+  .input-track {
+    height: 10px;
+    border-radius: 999px;
+    background: var(--panel-deep);
+    border: 1px solid var(--edge);
+    overflow: hidden;
+  }
+  .input-fill { height: 100%; width: 0%; border-radius: 999px; transition: width 0.05s linear; }
+  .input-fill.thr { background: linear-gradient(90deg, rgba(0, 224, 124, 0.35), var(--green)); box-shadow: 0 0 10px rgba(0, 224, 124, 0.5); }
+  .input-fill.brk { background: linear-gradient(90deg, rgba(232, 17, 45, 0.35), var(--red)); box-shadow: 0 0 10px rgba(232, 17, 45, 0.5); }
+  .input-v {
+    font-family: var(--font-display);
+    font-size: 12px;
+    font-weight: 700;
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+  }
+
   /* ── Stat strip ─────────────────────────────────────────────── */
   .stats {
     display: grid;
@@ -351,13 +451,13 @@
 <div class="hud" id="hud">
 
   <!-- ⓪ Brand bar -->
-  <section class="card brand-bar">
+  <section class="card widget brand-bar" data-widget="brand" data-title="Brand bar">
     <div class="brand-name">iRaceHUD</div>
-    <div class="brand-sub">Racing Telemetry</div>
+    <div class="brand-sub" id="brandSub">Racing Telemetry</div>
   </section>
 
   <!-- ① Rotational Rank Widget -->
-  <section class="card">
+  <section class="card widget" data-widget="rank" data-title="Scouting ladder">
     <div class="eyebrow">
       <span>Scouting Ladder</span>
       <span class="status-pill off" id="status"><span class="dot"></span><span id="statusText">OFFLINE</span></span>
@@ -368,9 +468,9 @@
   </section>
 
   <!-- ② Trackmania-style Delta Bar -->
-  <section class="card">
+  <section class="card widget" data-widget="delta" data-title="Delta bar">
     <div class="eyebrow">
-      <span>Δ vs World Record</span>
+      <span id="deltaLabel">Δ vs Reference</span>
       <span id="targetLap">TARGET --:--.---</span>
     </div>
     <div class="delta-value" id="deltaValue">+0.000</div>
@@ -379,8 +479,8 @@
   </section>
 
   <!-- ③ 2D Input Map -->
-  <section class="card">
-    <div class="eyebrow"><span>Live Input Map</span><span id="lapLabel">LAP —</span></div>
+  <section class="card widget" data-widget="map" data-title="Track map">
+    <div class="eyebrow"><span id="mapTitle">Live Input Map</span><span id="lapLabel">LAP —</span></div>
     <canvas id="trackCanvas"></canvas>
     <div class="map-legend">
       <span class="legend-ref">REFERENCE</span>
@@ -389,8 +489,17 @@
     </div>
   </section>
 
-  <!-- Stat strip -->
-  <section class="card">
+  <!-- ④ Pedal inputs -->
+  <section class="card widget" data-widget="inputs" data-title="Inputs">
+    <div class="eyebrow"><span>Inputs</span><span id="gearLabel">N · — RPM</span></div>
+    <div class="input-bars">
+      <div class="input-row"><span class="input-k">THR</span><div class="input-track"><div class="input-fill thr" id="thrFill"></div></div><span class="input-v" id="thrVal">0%</span></div>
+      <div class="input-row"><span class="input-k">BRK</span><div class="input-track"><div class="input-fill brk" id="brkFill"></div></div><span class="input-v" id="brkVal">0%</span></div>
+    </div>
+  </section>
+
+  <!-- ⑤ Stat strip -->
+  <section class="card widget" data-widget="stats" data-title="Lap stats">
     <div class="stats">
       <div class="stat"><div class="k">Speed</div><div class="v" id="speed">—</div></div>
       <div class="stat"><div class="k">Last Lap</div><div class="v" id="lastLap">--.---</div></div>
@@ -404,11 +513,19 @@
 
 <div id="ripple"><div class="ring"></div></div>
 
+<div id="editBar">
+  <span class="eb-title">EDIT MODE</span>
+  <span class="eb-hint">drag to move · yellow corner to resize · ✕ to hide</span>
+  <span id="ebHidden"></span>
+  <button id="ebReset" type="button">RESET</button>
+  <button id="ebDone" type="button">DONE</button>
+</div>
+
 <script>
 /* ═══════════════════════ iRaceHUD Overlay Runtime ═══════════════════════ */
 'use strict';
 
-const WS_URL = 'ws://localhost:8080';
+const WS_URL = new URLSearchParams(location.search).get('ws') || 'ws://localhost:8080';
 const $ = (id) => document.getElementById(id);
 
 /* ── Shared state (memory only — overlays must survive without storage) ── */
@@ -417,11 +534,21 @@ const state = {
   source: null,            // 'live' | 'demo'
   lastMsgAt: 0,
   targetLapTime: null,
+  refSource: 'none',       // 'wr' | 'pb' | 'none' — what the delta bar races
   data: null,              // latest telemetry payload
   trail: [],               // [{x,y,thr,brk,ts}] input-painted ghost trail
   driverClub: 'your club',
   driverCountry: '—',
+  driverName: null,
+  speedUnit: null,         // 'mph' | 'kmh' | null = auto by country ([U] toggles)
 };
+
+/* mph for countries that drive in miles; everyone else gets km/h. */
+function speedUnitNow() {
+  if (state.speedUnit) return state.speedUnit;
+  const c = (state.driverCountry || '').toUpperCase();
+  return ['US', 'USA', 'GB', 'UK'].includes(c) ? 'mph' : 'kmh';
+}
 
 /* ── Formatting helpers ── */
 function fmtLap(sec) {
@@ -440,35 +567,40 @@ function fmtDelta(d) {
 function buildTiers() {
   const c = state.driverCountry, club = state.driverClub;
   const best = fmtLap(state.data?.sessionBestTime);
+  const you = state.driverName || 'YOU';
+  const hasCountry = c && c !== '—' && c !== '??';
+  const hasClub = club && !['None', 'Unknown Club', 'your club'].includes(club);
+  // Competitor rows are SAMPLE data until the cloud ladder API exists — the
+  // subs say so honestly; only "you" and your best time are real.
   return [
     {
       title: 'GLOBAL RANK: #412',
-      sub: 'Top 5% · 8,240 drivers on this combo',
+      sub: 'sample ladder · cloud standings in development',
       rows: [
         { pos: 410, name: 'K. Aalto',     gap: '-0.212' },
         { pos: 411, name: 'D. Moreau',    gap: '-0.087' },
-        { pos: 412, name: 'YOU',          gap: best, me: true },
+        { pos: 412, name: you,            gap: best, me: true },
         { pos: 413, name: 'R. Tanaka',    gap: '+0.140' },
         { pos: 414, name: 'L. Krüger',    gap: '+0.395' },
       ],
     },
     {
-      title: 'REGIONAL RANK: #14 in ' + c,
-      sub: 'National ladder · updated live',
+      title: 'REGIONAL RANK: #14' + (hasCountry ? ' in ' + c : ''),
+      sub: 'sample ladder · national standings in development',
       rows: [
         { pos: 12, name: 'S. Whitfield', gap: '-0.301' },
         { pos: 13, name: 'A. Okafor',    gap: '-0.054' },
-        { pos: 14, name: 'YOU',          gap: best, me: true },
+        { pos: 14, name: you,            gap: best, me: true },
         { pos: 15, name: 'J. Barros',    gap: '+0.226' },
         { pos: 16, name: 'M. Lindqvist', gap: '+0.518' },
       ],
     },
     {
-      title: 'CLUB RANK: #2 in Club ' + club + ' 🏆',
-      sub: 'One scalp from the club record',
+      title: 'CLUB RANK: #2' + (hasClub ? ' in Club ' + club : '') + ' 🏆',
+      sub: 'sample ladder · club standings in development',
       rows: [
         { pos: 1, name: 'T. Novak',   gap: '-0.163' },
-        { pos: 2, name: 'YOU',        gap: best, me: true },
+        { pos: 2, name: you,          gap: best, me: true },
         { pos: 3, name: 'C. Reyes',   gap: '+0.410' },
         { pos: 4, name: 'P. Duval',   gap: '+0.688' },
         { pos: 5, name: 'H. Sato',    gap: '+1.102' },
@@ -517,11 +649,17 @@ const DELTA_DEADZONE  = 0.005;  // avoid green/red flicker at ~0.000
 
 function renderDelta(d) {
   const valueEl = $('deltaValue'), fillEl = $('deltaFill');
-  valueEl.textContent = fmtDelta(d);
 
   valueEl.classList.remove('gain', 'lose');
   fillEl.classList.remove('gain', 'lose');
-  if (d == null || Math.abs(d) < DELTA_DEADZONE) {
+  if (d == null) {
+    // No reference ghost yet (fresh track + car): show a calm placeholder.
+    valueEl.textContent = state.refSource === 'none' ? '--.---' : '+0.000';
+    fillEl.style.width = '0%';
+    return;
+  }
+  valueEl.textContent = fmtDelta(d);
+  if (Math.abs(d) < DELTA_DEADZONE) {
     fillEl.style.width = '0%';
     return;
   }
@@ -537,15 +675,17 @@ function renderDelta(d) {
 const canvas = $('trackCanvas');
 const ctx = canvas.getContext('2d');
 let W = 0, H = 0, DPR = 1;
-let trackPts = [];   // arc-length-uniform polyline of the circuit
-let cumLen = [];     // cumulative length per point
+let trackPts = [];   // polyline of the circuit
+let cumLen = [];     // cumulative length per point (stylized loop only)
 let totalLen = 0;
-let staticLayer = null; // pre-rendered neon-blue reference track
+let staticLayer = null; // pre-rendered reference track
+let realShape = null;   // learned GPS shape from the agent — [{x,y}] unit box
 
 function setupCanvas() {
-  const rect = canvas.getBoundingClientRect();
+  // offsetWidth/Height ignore the widget's scale() transform — the canvas
+  // must render at layout size and let the transform do the scaling.
   DPR = window.devicePixelRatio || 1;
-  W = rect.width; H = rect.height;
+  W = canvas.offsetWidth; H = canvas.offsetHeight;
   canvas.width = Math.round(W * DPR);
   canvas.height = Math.round(H * DPR);
   ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
@@ -557,6 +697,15 @@ function setupCanvas() {
    an organic road-course silhouette. Points are dense enough that mapping
    LapDistPct by cumulative arc length keeps the dot's speed believable.    */
 function buildTrackGeometry() {
+  if (realShape && realShape.length > 2) {
+    // Learned GPS shape: unit-box points where index i ↔ pct i/(N-1).
+    const m = 16;
+    const s = Math.min(W - 2 * m, H - 2 * m);
+    const offX = (W - s) / 2, offY = (H - s) / 2;
+    trackPts = realShape.map((p) => ({ x: offX + p.x * s, y: offY + p.y * s }));
+    trackPts.push({ ...trackPts[0] }); // close the loop
+    return;
+  }
   const N = 900;
   const cx = W / 2, cy = H / 2 + 2;
   const rx = W * 0.40, ry = H * 0.365;
@@ -577,7 +726,17 @@ function buildTrackGeometry() {
 }
 
 function pctToPoint(pct) {
-  const target = ((pct % 1) + 1) % 1 * totalLen;
+  const x01 = ((pct % 1) + 1) % 1;
+  if (realShape && trackPts.length > 2) {
+    // GPS shapes are uniform in pct, not arc length — interpolate by index.
+    const n = trackPts.length - 1;
+    const f = x01 * n;
+    const i = Math.min(n - 1, Math.floor(f));
+    const t = f - i;
+    const a = trackPts[i], b = trackPts[i + 1];
+    return { x: a.x + t * (b.x - a.x), y: a.y + t * (b.y - a.y) };
+  }
+  const target = x01 * totalLen;
   let lo = 0, hi = cumLen.length - 1;
   while (lo < hi) { // binary search the cumulative-length table
     const mid = (lo + hi) >> 1;
@@ -728,11 +887,39 @@ function firePersonalBest(lapTime) {
 
 /* ══════════════════════ STAT STRIP ═══════════════════════════════════════ */
 
+/* Reference labels: what the delta bar is racing + its target time. */
+function renderRefLabels() {
+  const labels = {
+    wr: 'Δ vs World Record',
+    pb: 'Δ vs Personal Best',
+    none: 'Δ vs Personal Best',
+  };
+  $('deltaLabel').textContent = labels[state.refSource] || 'Δ vs Reference';
+  $('targetLap').textContent = state.targetLapTime != null
+    ? 'TARGET ' + fmtLap(state.targetLapTime)
+    : 'FIRST CLEAN LAP SETS TARGET';
+}
+
 function renderStats(d) {
-  $('speed').textContent = d.currentSpeed != null ? Math.round(d.currentSpeed) + ' km/h' : '—';
+  $('speed').textContent = d.currentSpeed != null
+    ? (speedUnitNow() === 'mph'
+        ? Math.round(d.currentSpeed * 0.621371) + ' mph'
+        : Math.round(d.currentSpeed) + ' km/h')
+    : '—';
   $('lastLap').textContent = fmtLap(d.lastLapTime);
   $('bestLap').textContent = fmtLap(d.sessionBestTime);
   $('lapLabel').textContent = 'LAP ' + (d.lap ?? '—');
+
+  // Inputs widget: pedal bars + gear/rpm readout
+  const thr = Math.round((d.throttleInput ?? 0) * 100);
+  const brk = Math.round((d.brakeInput ?? 0) * 100);
+  $('thrFill').style.width = thr + '%';
+  $('thrVal').textContent = thr + '%';
+  $('brkFill').style.width = brk + '%';
+  $('brkVal').textContent = brk + '%';
+  const gearTxt = d.gear == null ? '—' : d.gear === -1 ? 'R' : d.gear === 0 ? 'N' : d.gear;
+  $('gearLabel').textContent =
+    'GEAR ' + gearTxt + ' · ' + (d.rpm != null ? Math.round(d.rpm) + ' RPM' : '— RPM');
 
   const g = d.consistencyGrade;
   const el = $('grade');
@@ -766,7 +953,15 @@ function connect() {
     if (msg.type === 'config') {
       state.source = msg.source;
       state.targetLapTime = msg.targetLapTime;
-      $('targetLap').textContent = 'TARGET ' + fmtLap(msg.targetLapTime);
+      // Older agents send targetLapTime without refSource — treat as WR.
+      state.refSource = msg.refSource || (msg.targetLapTime != null ? 'wr' : 'none');
+      if (msg.driverName) {
+        state.driverName = msg.driverName;
+        $('brandSub').textContent = msg.driverName;
+      }
+      if (msg.trackShape) { realShape = msg.trackShape; setupCanvas(); }
+      if (msg.trackName) $('mapTitle').textContent = msg.trackName;
+      renderRefLabels();
       return;
     }
 
@@ -775,6 +970,10 @@ function connect() {
       state.source = msg.source || state.source;
       if (msg.driverClub) state.driverClub = msg.driverClub;
       if (msg.driverCountry) state.driverCountry = msg.driverCountry;
+      if (msg.driverName && msg.driverName !== state.driverName) {
+        state.driverName = msg.driverName;
+        $('brandSub').textContent = msg.driverName;
+      }
       renderDelta(msg.liveDelta);
       renderStats(msg);
       if (msg.lapDistPct != null) pushTrailSample(msg);
@@ -812,11 +1011,144 @@ setInterval(() => {
   }
 }, 400);
 
+/* ══════════════════ WIDGET LAYOUT · move / resize / hide ═════════════════
+ * Every card is an independent widget. Edit mode (press E in a browser, or
+ * Ctrl+Shift+M over the game) lets you drag, scale, hide, and restore each
+ * one; the layout persists locally and survives restarts.                  */
+
+const LAYOUT_KEY = 'iracehud-layout-v1';
+const widgetEls = Array.from(document.querySelectorAll('[data-widget]'));
+// Fallback heights for the default column — live heights aren't final at
+// boot (the ladder fills in after the agent connects).
+const DEFAULT_H = { brand: 48, rank: 175, delta: 122, map: 300, inputs: 96, stats: 66 };
+let layout = {};
+try { layout = JSON.parse(localStorage.getItem(LAYOUT_KEY) || '{}'); } catch { /* no storage — session-only layout */ }
+let defaults = null;
+let editMode = false;
+
+for (const el of widgetEls) { // inject edit-mode chrome
+  const hide = document.createElement('button');
+  hide.className = 'w-hide'; hide.type = 'button'; hide.textContent = '✕'; hide.title = 'Hide widget';
+  const rs = document.createElement('div');
+  rs.className = 'w-resize'; rs.title = 'Drag to resize';
+  el.append(hide, rs);
+}
+
+function computeDefaults() {
+  let x = Math.max(12, window.innerWidth - 380 - 32);
+  let y = 12;
+  const def = {};
+  for (const el of widgetEls) {
+    const id = el.dataset.widget;
+    const h = Math.max(el.offsetHeight, DEFAULT_H[id] || 80);
+    if (y > 12 && y + h > window.innerHeight - 12) {
+      // Column full — wrap to a new column to the left.
+      x = Math.max(12, x - 392);
+      y = 12;
+    }
+    def[id] = { x, y, s: 1, hidden: false };
+    y += h + 10;
+  }
+  return def;
+}
+
+function widgetState(id) { return { ...defaults[id], ...(layout[id] || {}) }; }
+
+function saveLayout() {
+  try { localStorage.setItem(LAYOUT_KEY, JSON.stringify(layout)); } catch { /* ok */ }
+}
+
+function applyLayout() {
+  defaults ??= computeDefaults();
+  for (const el of widgetEls) {
+    const l = widgetState(el.dataset.widget);
+    el.style.left = Math.min(Math.max(0, l.x), Math.max(0, window.innerWidth - 60)) + 'px';
+    el.style.top = Math.min(Math.max(0, l.y), Math.max(0, window.innerHeight - 40)) + 'px';
+    el.style.transform = 'scale(' + (l.s || 1) + ')';
+    el.classList.toggle('hidden', !!l.hidden);
+  }
+  renderHiddenChips();
+}
+
+function patchWidget(id, patch) {
+  layout[id] = { ...widgetState(id), ...patch };
+  saveLayout();
+  applyLayout();
+}
+
+function renderHiddenChips() {
+  const box = $('ebHidden');
+  box.innerHTML = '';
+  for (const el of widgetEls) {
+    const id = el.dataset.widget;
+    if (!widgetState(id).hidden) continue;
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.textContent = '+ ' + (el.dataset.title || id);
+    b.addEventListener('click', () => patchWidget(id, { hidden: false }));
+    box.appendChild(b);
+  }
+}
+
+window.__setEditMode = (on) => {
+  editMode = !!on;
+  document.body.classList.toggle('edit', editMode);
+};
+
+$('ebDone').addEventListener('click', () => {
+  window.__setEditMode(false);
+  console.log('__IRACEHUD_LOCK__'); // the Electron shell hears this and re-locks click-through
+});
+$('ebReset').addEventListener('click', () => {
+  layout = {};
+  saveLayout();
+  applyLayout();
+});
+
+let drag = null;
+window.addEventListener('pointerdown', (e) => {
+  if (!editMode) return;
+  const wEl = e.target.closest('[data-widget]');
+  if (!wEl) return;
+  const id = wEl.dataset.widget;
+  if (e.target.closest('.w-hide')) { patchWidget(id, { hidden: true }); return; }
+  const l = widgetState(id);
+  drag = e.target.closest('.w-resize')
+    ? { id, el: wEl, mode: 'resize', x0: e.clientX, s0: l.s || 1 }
+    : { id, el: wEl, mode: 'move', dx: e.clientX - l.x, dy: e.clientY - l.y };
+  wEl.classList.add('dragging');
+  e.preventDefault();
+});
+window.addEventListener('pointermove', (e) => {
+  if (!drag) return;
+  if (drag.mode === 'move') {
+    patchWidget(drag.id, { x: Math.round(e.clientX - drag.dx), y: Math.round(e.clientY - drag.dy) });
+  } else {
+    const s = Math.min(1.8, Math.max(0.55, drag.s0 + (e.clientX - drag.x0) / 320));
+    patchWidget(drag.id, { s: +s.toFixed(2) });
+  }
+});
+window.addEventListener('pointerup', () => {
+  if (!drag) return;
+  drag.el.classList.remove('dragging');
+  drag = null;
+});
+
 /* ── Boot ── */
 window.addEventListener('keydown', (e) => {
   if (e.key.toLowerCase() === 'b') document.body.classList.toggle('debug-bg');
+  if (e.key.toLowerCase() === 'e') window.__setEditMode(!editMode);
+  if (e.key.toLowerCase() === 'u') {
+    state.speedUnit = speedUnitNow() === 'mph' ? 'kmh' : 'mph';
+    if (state.data) renderStats(state.data);
+  }
 });
-window.addEventListener('resize', setupCanvas);
+applyLayout();
+window.addEventListener('resize', () => {
+  defaults = computeDefaults(); // untouched widgets follow the new screen size
+  applyLayout();
+  setupCanvas();
+});
 
 setupCanvas();
 requestAnimationFrame(drawFrame);
